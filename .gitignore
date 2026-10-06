@@ -9,6 +9,9 @@ env/
 .env.local
 .env.*.local
 
+# Data files
+data.json
+
 # Python
 __pycache__/
 *.py[cod]

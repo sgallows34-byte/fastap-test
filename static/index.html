@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Debugger</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            font-size: 13px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 16px;
+            font-weight: normal;
+            letter-spacing: 1px;
+        }
+        .section {
+            border: 1px solid #333;
+            margin-bottom: 20px;
+        }
+        .section-header {
+            background: #111;
+            border-bottom: 1px solid #333;
+            padding: 8px 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .section-body { padding: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group:last-child { margin-bottom: 0; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #333;
+            background: #111;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #fff;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        button:hover {
+            background: #ccc;
+        }
+        .response-section { margin-top: 20px; }
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #111;
+            border-bottom: 1px solid #333;
+        }
+        .status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border: 1px solid #333;
+        }
+        .status.success { color: #4ade80; border-color: #4ade80; }
+        .status.redirect { color: #facc15; border-color: #facc15; }
+        .status.client-error { color: #fb923c; border-color: #fb923c; }
+        .status.server-error { color: #f87171; border-color: #f87171; }
+        .status.error { color: #f87171; border-color: #f87171; }
+        .status.loading { color: #888; border-color: #888; }
+        .response-content {
+            background: #111;
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: none;
+        }
+        .hidden { display: none; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>&gt; API DEBUGGER</h1>
+        </div>
+        <div class="section">
+            <div class="section-header">REQUEST</div>
+            <div class="section-body">
+                <form id="apiForm">
+                    <div class="form-group">
+                        <label for="url">URL</label>
+                        <input type="text" id="url" name="url" value="https://api.example.com/endpoint" placeholder="https://api.example.com/endpoint">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="method">METHOD</label>
+                            <select id="method" name="method">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="authToken">AUTH TOKEN</label>
+                            <input type="text" id="authToken" name="authToken" placeholder="Bearer token">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="headers">HEADERS (JSON)</label>
+                        <textarea id="headers" name="headers" placeholder='{"Content-Type": "application/json"}'>{"Content-Type": "application/json"}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="payload">PAYLOAD (JSON)</label>
+                        <textarea id="payload" name="payload" placeholder='{"key": "value"}'>{}</textarea>
+                    </div>
+                    <button type="submit">SEND</button>
+                </form>
+            </div>
+        </div>
+        <div class="section response-section hidden" id="responseCard">
+            <div class="response-header">
+                <span>RESPONSE</span>
+                <span class="status" id="statusBadge"></span>
+            </div>
+            <div class="response-content" id="responseContent"></div>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('apiForm');
+        const responseCard = document.getElementById('responseCard');
+        const statusBadge = document.getElementById('statusBadge');
+        const responseContent = document.getElementById('responseContent');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const url = formData.get('url');
+            const method = formData.get('method');
+            const authToken = formData.get('authToken');
+            let headers = {};
+            let payload = {};
+
+            try { headers = JSON.parse(formData.get('headers') || '{}'); }
+            catch (err) { alert('Invalid JSON in headers'); return; }
+            try { payload = JSON.parse(formData.get('payload') || '{}'); }
+            catch (err) { alert('Invalid JSON in payload'); return; }
+
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            responseCard.classList.remove('hidden');
+            statusBadge.className = 'status loading';
+            statusBadge.textContent = 'SENDING...';
+            responseContent.textContent = '';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: headers,
+                    body: method !== 'GET' && method !== 'DELETE' ? JSON.stringify(payload) : undefined
+                });
+
+                const responseData = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(responseData);
+                } catch {
+                    parsedData = responseData;
+                }
+
+                statusBadge.textContent = `${response.status} ${response.statusText}`;
+                statusBadge.classList.remove('success', 'redirect', 'client-error', 'server-error', 'error');
+                
+                if (response.ok) {
+                    statusBadge.classList.add('success');
+                } else if (response.status >= 300 && response.status < 400) {
+                    statusBadge.classList.add('redirect');
+                } else if (response.status >= 400 && response.status < 500) {
+                    statusBadge.classList.add('client-error');
+                } else if (response.status >= 500) {
+                    statusBadge.classList.add('server-error');
+                } else {
+                    statusBadge.classList.add('error');
+                }
+                responseContent.textContent = typeof parsedData === 'object' ? JSON.stringify(parsedData, null, 2) : parsedData;
+            } catch (error) {
+                statusBadge.textContent = 'ERROR';
+                statusBadge.classList.add('error');
+                responseContent.textContent = `ERROR: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

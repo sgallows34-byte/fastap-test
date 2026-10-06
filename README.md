@@ -19,11 +19,17 @@ pip install -r requirements.txt
 
 ### 3. Configure environment variables
 
-Create a `.env` file with your Auth0 credentials:
+Create a `.env` file with your Auth0 credentials and API proxy configuration:
 
 ```env
+# Auth0 Configuration
 AUTH0_DOMAIN=your-auth0-domain.us.auth0.com
 AUTH0_AUDIENCE=your-api-identifier
+
+# API Proxy Configuration (optional defaults)
+DEFAULT_API_URL=https://api.example.com
+DEFAULT_AUTH_TOKEN=your-default-api-token
+DEFAULT_HEADERS={"Content-Type": "application/json"}
 ```
 
 ## Running the Server
@@ -35,6 +41,19 @@ uvicorn main:app --reload
 ```
 
 The server will run on `http://127.0.0.1:8000`
+
+## Web Interface
+
+Visit `http://localhost:8000` to access the web interface for making API calls.
+
+The web interface provides:
+- Form to enter API URL, method, headers, and payload
+- Pre-loaded default headers (from `.env`)
+- Direct API calls from the browser (no backend proxy)
+- Real-time response display with status codes
+- JSON formatting for easy reading
+
+The interface calls APIs directly from your browser using the provided configuration.
 
 ## API Endpoints
 
@@ -71,28 +90,62 @@ Response:
 }
 ```
 
-## Getting an Auth0 Token
+### Items Endpoints
+Endpoints for managing items stored in `data.json`.
 
-To get a token for testing, use the Auth0 Management API or client credentials flow. Example:
-
+**GET /items** - Read items (requires `read:items` scope):
 ```bash
-export TOKEN=$(curl -X POST https://your-domain.auth0.com/oauth/token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "your-client-id",
-    "client_secret": "your-client-secret",
-    "audience": "your-api-identifier",
-    "grant_type": "client_credentials"
-  }' | jq -r '.access_token')
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/items
 ```
+
+Response:
+```json
+{
+  "items": ["a", "b", "c"]
+}
+```
+
+**POST /items** - Create new item (requires `write:items` scope):
+```bash
+curl -X POST http://localhost:8000/items \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '"new_item"'
+```
+
+Response:
+```json
+{
+  "msg": "item created",
+  "item": "new_item",
+  "items": ["a", "b", "c", "new_item"]
+}
+```
+
+### Web Interface API Calls
+The web interface makes direct API calls from your browser. Configure your API details in the form and click "Send Request".
+
+
 
 ## Project Structure
 
 ```
 .
-├── main.py              # FastAPI application
+├── main.py              # FastAPI application entry point
+├── config.py            # Configuration and environment variables
+├── auth.py              # Auth0 JWT verification
+├── static/
+│   └── index.html      # Web interface (direct API calls)
 ├── requirements.txt     # Python dependencies
 ├── .env                 # Environment variables (not committed)
 ├── .gitignore          # Git ignore rules
 └── README.md           # This file
 ```
+
+## Configuration Notes
+
+- The web interface makes direct API calls from your browser
+- Default headers are pre-loaded from `.env` 
+- You can override any field directly in the form
+- The interface supports GET, POST, PUT, and DELETE methods
+- JSON responses are automatically formatted; other content types display as raw text

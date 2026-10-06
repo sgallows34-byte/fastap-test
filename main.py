@@ -1,43 +1,56 @@
-import os
-import jwt
-from jwt import PyJWKClient
-from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, Depends
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi import Body
+from auth import verify_token, require_scope
+import json
+from typing import List, Optional
 
-load_dotenv()
-DOMAIN = os.environ["AUTH0_DOMAIN"]
-AUDIENCE = os.environ["AUTH0_AUDIENCE"]
+DATA_FILE = "data.json"
 
-# Fetches and caches Auth0's public keys
-jwks_client = PyJWKClient(f"https://{DOMAIN}/.well-known/jwks.json")
 
-# Reads the "Authorization: Bearer <token>" header
-bearer = HTTPBearer()
+def read_items():
+    try:
+        with open(DATA_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def write_items(items: List[str]):
+    with open(DATA_FILE, 'w') as f:
+        json.dump(items, f, indent=2)
 
 app = FastAPI()
 
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-def verify_token(creds: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
-    token = creds.credentials
-    try:
-        signing_key = jwks_client.get_signing_key_from_jwt(token).key
-        return jwt.decode(
-            token,
-            signing_key,
-            algorithms=["RS256"],
-            audience=AUDIENCE,
-            issuer=f"https://{DOMAIN}/",
-        )
-    except jwt.PyJWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+@app.get("/")
+def read_root():
+    """Serve the web interface"""
+    return FileResponse("static/index.html")
 
 
 @app.get("/public")
-def public():
+def public_route():
     return {"msg": "anyone can see this"}
 
 
 @app.get("/private")
-def private(claims: dict = Depends(verify_token)):
+def private_route(claims: dict = Depends(verify_token)):
     return {"msg": "you're authenticated", "claims": claims}
+
+@app.get("/items")
+def get_items(claims: dict = Depends(require_scope("read:items"))):
+    items = read_items()
+    return {"items": items}
+
+
+@app.post("/items")
+def create_item(item: str = Body(...), claims: dict = Depends(require_scope("write:items"))):
+    items = read_items()
+    items.append(item)
+    write_items(items)
+    return {"msg": "item created", "item": item, "items": items}
