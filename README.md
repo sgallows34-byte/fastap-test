@@ -19,16 +19,22 @@ pip install -r requirements.txt
 
 ### 3. Configure environment variables
 
-Create a `.env` file with your Auth0 credentials and API proxy configuration:
+Copy the sample environment file and fill in your credentials:
+
+```bash
+cp .env.sample .env
+```
+
+Then edit `.env` with your Auth0 credentials:
 
 ```env
 # Auth0 Configuration
 AUTH0_DOMAIN=your-auth0-domain.us.auth0.com
 AUTH0_AUDIENCE=your-api-identifier
 
-# API Proxy Configuration (optional defaults)
+# API Configuration (pre-filled in web form)
 DEFAULT_API_URL=https://api.example.com
-DEFAULT_AUTH_TOKEN=your-default-api-token
+DEFAULT_AUTH_TOKEN=
 DEFAULT_HEADERS={"Content-Type": "application/json"}
 ```
 

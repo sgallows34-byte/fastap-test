@@ -9,6 +9,9 @@ env/
 .env.local
 .env.*.local
 
+# Keep sample file
+!.env.sample
+
 # Data files
 data.json
 
