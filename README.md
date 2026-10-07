@@ -40,13 +40,24 @@ DEFAULT_HEADERS={"Content-Type": "application/json"}
 
 ## Running the Server
 
-Start the FastAPI server with auto-reload:
+Start the FastAPI server on port 3500:
 
 ```bash
-uvicorn main:app --reload
+uvicorn main:app --reload --port 3500
 ```
 
-The server will run on `http://127.0.0.1:8000`
+The server will run on `http://127.0.0.1:3500`
+
+## Running the SPA Frontend
+
+The SPA frontend is in the `spa/` directory. Serve it on port 3000:
+
+```bash
+cd spa
+python3 -m http.server 3000
+```
+
+The frontend will run on `http://localhost:3000`
 
 ## Web Interface
 

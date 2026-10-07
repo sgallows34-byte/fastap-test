@@ -27,8 +27,8 @@ def verify_token(creds: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
 
 def require_scope(needed: str):
     def checker(claims: dict = Depends(verify_token)) -> dict:
-        granted = claims.get("scope", "").split()
+        granted = set(claims.get("scope", "").split()) | set(claims.get("permissions", []))
         if needed not in granted:
-            raise HTTPException(status_code=403, detail=f"Missing scope: {needed}")
+            raise HTTPException(status_code=403, detail=f"Missing permission: {needed}")
         return claims
     return checker

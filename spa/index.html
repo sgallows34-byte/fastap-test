@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<body>
+  <button id="login">Log in</button>
+  <button id="call">Call API</button>
+  <button id="logout">Log out</button>
+  <pre id="out">Not logged in</pre>
+
+  <button id="signup">Sign up</button>
+  <button id="me">My account</button>
+
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+  <script>
+    const out = document.getElementById("out");
+    let client;
+
+    function decode(token) {
+      const p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      return JSON.parse(atob(p));
+    }
+
+    async function init() {
+      client = await auth0.createAuth0Client({
+        domain: "dev-ga2t6dbnlmaceq6y.us.auth0.com",
+        clientId: "IBXBqnYukXIkbgkpeBmtqQl9FW8uMprc",
+        authorizationParams: {
+          redirect_uri: window.location.origin,
+          audience: "https://bolt9-api",
+        },
+      });
+
+      if (location.search.includes("code=") && location.search.includes("state=")) {
+        await client.handleRedirectCallback();
+        history.replaceState({}, "", "/");
+      }
+
+      out.textContent = (await client.isAuthenticated()) ? "Logged in" : "Not logged in";
+    }
+
+    document.getElementById("login").onclick = () => client.loginWithRedirect();
+    document.getElementById("logout").onclick = () =>
+      client.logout({ logoutParams: { returnTo: window.location.origin } });
+
+    document.getElementById("call").onclick = async () => {
+      const token = await client.getTokenSilently();
+      const res = await fetch("http://127.0.0.1:3500/items", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      out.textContent =
+        "TOKEN PAYLOAD:\n" + JSON.stringify(decode(token), null, 2) +
+        "\n\nGET /items -> " + res.status + "\n" + (await res.text());
+    };
+    
+    document.getElementById("signup").onclick = () =>
+      client.loginWithRedirect({ authorizationParams: { screen_hint: "signup" } });
+
+    document.getElementById("me").onclick = async () => {
+      const token = await client.getTokenSilently();
+      const res = await fetch("http://127.0.0.1:3500/me", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      out.textContent = "GET /me -> " + res.status + "\n" + (await res.text());
+    };
+
+    init();
+  </script>
+</body>
+</html>
